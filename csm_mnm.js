@@ -115,18 +115,13 @@ document.getElementById("saveViewBtn").addEventListener("click", () => {
   const smallPanel = document.getElementById("smallViewerContainer");
   const rect = smallPanel.getBoundingClientRect();
 
-  // Convert current CSS pixel size -> vw/vh (for consistent mobile/desktop restore)
+  // Convert current CSS pixel size -> vw/vh
   const { w: vpW, h: vpH } = getViewportSize();
   const vw = (rect.width  / vpW) * 100;
   const vh = (rect.height / vpH) * 100;
 
-  // Store as numbers (vw/vh), not strings
-  const subpanelsize = b64Encode({
-    vw: +vw.toFixed(3),
-    vh: +vh.toFixed(3),
-  });
+  const subpanelsize = b64Encode({ vw: +vw.toFixed(3), vh: +vh.toFixed(3) });
 
-  // Also store the current sim time
   const viewtime = Cesium.JulianDate.toIso8601(viewer.clock.currentTime);
 
   // Preserve ALL existing params + hash exactly (no re-encoding)
@@ -139,6 +134,7 @@ document.getElementById("saveViewBtn").addEventListener("click", () => {
   rawParams.set("subpanelview", subpanelview);
   rawParams.set("subpanelsize", subpanelsize);
   rawParams.set("viewtime", viewtime);
+  rawParams.set("hideSave", "1");   // 👈 NEW: add hideSave=1
 
   const query = Array.from(rawParams.entries())
     .map(([k, v]) => `${k}=${v}`)
@@ -149,7 +145,6 @@ document.getElementById("saveViewBtn").addEventListener("click", () => {
   document.getElementById("viewLink").innerHTML =
     `<a href="${newUrl}" target="_blank">Open Saved View</a>`;
 });
-
 
 function restoreCameraAfterReady(viewerInstance, paramName) {
   const encoded = getParam(paramName);
@@ -234,10 +229,20 @@ function restoreTimeAfterReady() {
   }
 }
 
+function maybeHideSavePanel() {
+  const hide = getParam("hideSave");
+  if (hide === "1") {
+    const panel = document.getElementById("saveViewPanel");
+    if (panel) panel.style.display = "none";
+  }
+}
+
 // Wait for BOTH CZMLs to load before restoring views/time
 Promise.all([mainDataSource, smallDataSource]).then(() => {
   restorePanelSize();
   restoreCameraAfterReady(viewer, "panelview");
   restoreCameraAfterReady(smallViewer, "subpanelview");
   restoreTimeAfterReady();
+  maybeHideSavePanel();
 });
+
